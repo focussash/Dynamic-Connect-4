@@ -40,34 +40,13 @@ class Board:
         
 def GenerateBoard(State):
     #This generates a bitboard of the current board (an array of 8*8 binary numbers; the bottom row and rightmost column are all 0s to avoid TerminalTest errors)
-    BoardArrayA = []
-    BoardArrayB = []
-    BoardArrayT = []
-    FoundPiece = 0
-    for i in range(1,8):
-        for j in range(1,8):
-            for k in range(12):
-                if State[1][k] == i:
-                    if State[0][k] == j:
-                        FoundPiece = 1
-                        if k < 6:
-                            BoardArrayB.append(0)
-                            BoardArrayA.append(1)
-                        else:
-                            BoardArrayB.append(1)
-                            BoardArrayA.append(0)
-            if FoundPiece == 0:
-                BoardArrayB.append(0)
-                BoardArrayA.append(0)
-            FoundPiece = 0
-        BoardArrayB.append(0)
-        BoardArrayA.append(0)
-    for m in range(8):
-        BoardArrayB.append(0)
-        BoardArrayA.append(0)
-    BoardArrayT.append(BoardArrayA)
-    BoardArrayT.append(BoardArrayB)
-    return BoardArrayT
+    BoardArrayA = [0]*64
+    BoardArrayB = [0]*64
+    for k in range(6):
+        BoardArrayA[State[0][k]+8*State[1][k]] = 1
+    for k in range(6,12):
+        BoardArrayB[State[0][k]+8*State[1][k]] = 1 
+    return BoardArrayA + BoardArrayB
 
 def GenerateGraph(BoardArray):
     #Generate a graphical representation of current board for user
@@ -80,9 +59,9 @@ def GenerateGraph(BoardArray):
             if j % 2 > 0:
                 print(',', end = '')
             else:
-                if BoardArray[0][i*8+int(j/2)] == 1:
+                if BoardArray[i*8+int(j/2)] == 1:
                     print('X', end = '')
-                elif BoardArray[1][i*8+int(j/2)] == 1:
+                elif BoardArray[i*8+int(j/2)+64] == 1:
                     print('O', end = '')
                 else:
                     print(' ', end = '')
@@ -92,8 +71,8 @@ def GenerateGraph(BoardArray):
 def TerminalTest(BoardArray):
     #Check if the game ended; Also assigns utility: 1 = player A wins, -1 = player B wins
     #Takes input from GenerateBoard
-    StrA = "".join(map(str, BoardArray[0]))
-    StrB = "".join(map(str, BoardArray[1]))
+    StrA = "".join(map(str, BoardArray[0:63]))
+    StrB = "".join(map(str, BoardArray[64:128]))
     BitNumA = int(StrA,base = 2)
     BitNumB = int(StrB,base = 2)
     #Horizontal
@@ -124,7 +103,8 @@ def GenerateChild(State):
     #Takes input directly from Board State, as defined at the beginning of this file
 
     #Start by picking a piece in the board
-    ChildTemp = copy.deepcopy(State)
+    ChildTuple = tuple(copy.deepcopy(State))
+    ChildTemp = list(ChildTuple)
     ChildTemp[2] *= -1 #In the child, it's next player's term
     ChildAll = []
     DuplicateCheck = []
@@ -138,25 +118,25 @@ def GenerateChild(State):
             ChildTemp[0][i] -= 1 #Applying 'W'
             ChildTemp[4] += 1
             ChildAll.append(ChildTemp)
-            ChildTemp = copy.deepcopy(State)
+            ChildTemp = list(ChildTuple)
             ChildTemp[2] *= -1
         if ChildTemp[0][i] != 7:
             ChildTemp[0][i] += 1 #Applying 'E'
             ChildTemp[4] += 1
             ChildAll.append(ChildTemp)
-            ChildTemp = copy.deepcopy(State)
+            ChildTemp = list(ChildTuple)
             ChildTemp[2] *= -1
         if ChildTemp[1][i] != 1:
             ChildTemp[1][i] -= 1 #Applying 'S'
             ChildTemp[4] += 1
             ChildAll.append(ChildTemp)
-            ChildTemp = copy.deepcopy(State)
+            ChildTemp = list(ChildTuple)
             ChildTemp[2] *= -1
         if ChildTemp[1][i] != 7:
             ChildTemp[1][i] += 1 #Applying 'N'
             ChildTemp[4] += 1
             ChildAll.append(ChildTemp)
-            ChildTemp = copy.deepcopy(State)
+            ChildTemp = list(ChildTuple)
             ChildTemp[2] *= -1
     #Now, check if the move causes 2 pieces to overlap
     for j in range(len(ChildAll)):
@@ -176,34 +156,34 @@ def Max_Utility(State,cutoff):
     global TotalStatesExplored 
     Child = GenerateChild(State)
     if State[3] != 0: #If we already are at a leaf node
-        TotalStatesExplored += 1
+        PerformanceEval()
         return State
     elif State[4] > cutoff: #Or if we passed the depth limit
         State[3] = Heuristics(State)
-        TotalStatesExplored += 1
+        PerformanceEval()
         return State
     utility = - 100 #Technically this needs to be -inf but our utility don't go that far
     for i in range(len(Child)):
         utility = max(utility,Min_Utility(Child[i],cutoff)[3])        
     State[3] = utility
-    TotalStatesExplored += 1
+    PerformanceEval()
     return State
     
 def Min_Utility(State,cutoff):
     global TotalStatesExplored
     Child = GenerateChild(State)
     if State[3] != 0: #If we already are at a leaf node
-        TotalStatesExplored += 1
+        PerformanceEval()
         return State
     elif State[4] > cutoff: #Or if we passed the depth limit
         State[3] = Heuristics(State)
-        TotalStatesExplored += 1
+        PerformanceEval()
         return State
     utility = 100 #Technically this needs to be inf but again our utility don't go that far
     for i in range(len(Child)):
         utility = min(utility,Max_Utility(Child[i],cutoff)[3])
     State[3] = utility
-    TotalStatesExplored += 1
+    PerformanceEval()
     return State
     
 def minmax(State,cutoff):
@@ -257,12 +237,16 @@ def minmax(State,cutoff):
 def Heuristics(State):
     #Gives the heuristic evaluation of current state
     return 1
- 
+
+def PerformanceEval():
+    global TotalStatesExplored
+    TotalStatesExplored += 1
+    #print(TotalStatesExplored)
 
 start_time = time.time()
 currentBoard = [[3,7,6,7,7,4,1,4,5,6,3,5],[2,4,5,5,6,7,3,4,5,6,6,7],-1,0,0]       
 a = Board(currentBoard)
-print(minmax(a.State,1))
+print(minmax(a.State,3))
 print(TotalStatesExplored)              
 print("--- %s seconds ---" % (time.time() - start_time))
 
