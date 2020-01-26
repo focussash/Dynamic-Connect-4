@@ -1,6 +1,7 @@
 import copy
-DefaultBoard = [[1,1,1,7,7,7,1,1,1,7,7,7],[2,4,6,1,3,5,3,5,7,2,4,6],1,0]
-
+import time
+DefaultBoard = [[1,1,1,7,7,7,1,1,1,7,7,7],[2,4,6,1,3,5,3,5,7,2,4,6],1,0,0]
+TotalStatesExplored = 0
 class Board:
     global DefaultBoard
 
@@ -9,7 +10,6 @@ class Board:
         Self.State = InitialState
         Self.Action = ''
         Self.SearchTree = []
-
 
     def Update(Self,Action):
         #Apply an action (moving one piece) to update the board
@@ -31,8 +31,6 @@ class Board:
             Self.State[0][PieceNumber] += 1
         elif Act == 'W':
             Self.State[0][PieceNumber] -= 1
- 
-
         
 def GenerateBoard(State):
     #This generates a bitboard of the current board (an array of 8*8 binary numbers; the bottom row and rightmost column are all 0s to avoid TerminalTest errors)
@@ -117,9 +115,9 @@ def TerminalTest(BoardArray):
 def GenerateChild(State):
     #Generate all child nodes of a given node
     #The check for terminal does not happen within this function, rather before calling this function
+    #Takes input directly from Board State, as defined at the beginning of this file
 
     #Start by picking a piece in the board
-    #Moves: 1 = E, 2 = W, 3 = S, 4 = N
     ChildTemp = copy.deepcopy(State)
     ChildTemp[2] *= -1 #In the child, it's next player's term
     ChildAll = []
@@ -132,21 +130,25 @@ def GenerateChild(State):
     for i in player:            
         if ChildTemp[0][i] != 1:
             ChildTemp[0][i] -= 1 #Applying 'W'
+            ChildTemp[4] += 1
             ChildAll.append(ChildTemp)
             ChildTemp = copy.deepcopy(State)
             ChildTemp[2] *= -1
         if ChildTemp[0][i] != 7:
             ChildTemp[0][i] += 1 #Applying 'E'
+            ChildTemp[4] += 1
             ChildAll.append(ChildTemp)
             ChildTemp = copy.deepcopy(State)
             ChildTemp[2] *= -1
         if ChildTemp[1][i] != 1:
             ChildTemp[1][i] -= 1 #Applying 'S'
+            ChildTemp[4] += 1
             ChildAll.append(ChildTemp)
             ChildTemp = copy.deepcopy(State)
             ChildTemp[2] *= -1
         if ChildTemp[1][i] != 7:
             ChildTemp[1][i] += 1 #Applying 'N'
+            ChildTemp[4] += 1
             ChildAll.append(ChildTemp)
             ChildTemp = copy.deepcopy(State)
             ChildTemp[2] *= -1
@@ -162,13 +164,104 @@ def GenerateChild(State):
     #Now check if anyone won and update accordingly
     for q in range(len(ChildAll)):
         ChildAll[q][3] = TerminalTest(GenerateBoard(ChildAll[q]))
-        print (ChildAll[q][3])
     return ChildAll
 
-currentBoard = [[1,2,3,2,7,7,3,2,6,5,7,1],[1,2,3,4,3,4,4,5,5,3,5,6],-1,0]       
+def Max_Utility(State,cutoff):
+    global TotalStatesExplored 
+    Child = GenerateChild(State)
+    if State[3] != 0: #If we already are at a leaf node
+        PerformanceEval()
+        return State
+    elif State[4] > cutoff: #Or if we passed the depth limit
+        State[3] = Heuristics(State)
+        PerformanceEval()
+        return State
+    utility = - 100 #Technically this needs to be -inf but our utility don't go that far
+    for i in range(len(Child)):
+        utility = max(utility,Min_Utility(Child[i],cutoff)[3])        
+    State[3] = utility
+    PerformanceEval()
+    return State
+    
+def Min_Utility(State,cutoff):
+    global TotalStatesExplored
+    Child = GenerateChild(State)
+    if State[3] != 0: #If we already are at a leaf node
+        PerformanceEval()
+        return State
+    elif State[4] > cutoff: #Or if we passed the depth limit
+        State[3] = Heuristics(State)
+        PerformanceEval()
+        return State
+    utility = 100 #Technically this needs to be inf but again our utility don't go that far
+    for i in range(len(Child)):
+        utility = min(utility,Max_Utility(Child[i],cutoff)[3])
+    State[3] = utility
+    PerformanceEval()
+    return State
+    
+def minmax(State,cutoff):
+    #This function applys minmax algorithm to find the next best move, given a step cutoff
+    #It returns an action to be taken
+    NextBoard = [] #This stores the board after the next best move, with this we can retrack the best action to take
+    FindAction = []
+    Action = []
+    UtilityResults =[]
+    Max,Min = 0,1000
+    MaxIndex, MinIndex = 0,0
+    Child = []
+    #First, find the board after the next best move
+    Child = GenerateChild(State)
+    if State[2] == 1: #Player A's turn
+        for i in range(len(Child)):
+            UtilityResults.append(Max_Utility(Child[i],cutoff))
+            for j in range (len(UtilityResults)):
+                if Max < UtilityResults[j][3]:
+                    Max = UtilityResults[j][3]
+                    MaxIndex = j
+            NextBoard = UtilityResults[MaxIndex]
+    elif State[2] == -1: #Player B's turn
+        for i in range(len(Child)):            
+            UtilityResults.append(Min_Utility(Child[i],cutoff))         
+            for j in range (len(UtilityResults)):
+                if Min > UtilityResults[j][3]:
+                    Min = UtilityResults[j][3]
+                    MinIndex = j
+            NextBoard = UtilityResults[MinIndex]
+    #Now backtrack which move causes this board?
+    for j in range(12):
+        if State[0][j] > NextBoard[0][j]:
+            Action.append(str(State[0][j]))
+            Action.append(str(State[1][j]))
+            Action.append('W')
+        elif State[0][j] < NextBoard[0][j]:
+            Action.append(str(State[0][j]))
+            Action.append(str(State[1][j]))
+            Action.append('E')
+        elif State[1][j] > NextBoard[1][j]:
+            Action.append(str(State[0][j]))
+            Action.append(str(State[1][j]))
+            Action.append('N')
+        elif State[1][j] < NextBoard[1][j]:
+            Action.append(str(State[0][j]))
+            Action.append(str(State[1][j]))
+            Action.append('S')
+    return ''.join(Action)
+
+def Heuristics(State):
+    #Gives the heuristic evaluation of current state
+    return 1
+
+def PerformanceEval():
+    global TotalStatesExplored
+    TotalStatesExplored += 1
+    print(TotalStatesExplored)
+
+DefaultBoard = [[1,1,1,7,7,7,1,1,1,7,7,7],[2,4,6,1,3,5,3,5,7,2,4,6],1,0,0]
+TotalStatesExplored = 0
+start_time = time.time()
+currentBoard = [[3,7,6,7,7,4,1,4,5,6,3,5],[2,4,5,5,6,7,3,4,5,6,6,7],-1,0,0]       
 a = Board(currentBoard)
-GenerateGraph(GenerateBoard(a.State))
-b = GenerateChild(a.State)
-for i in range(len(b)):
-    print (b[i])
-               
+print(minmax(a.State,4))
+print(TotalStatesExplored)              
+print("--- %s seconds ---" % (time.time() - start_time))
