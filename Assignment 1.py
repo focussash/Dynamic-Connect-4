@@ -12,10 +12,9 @@ class Board:
     def __init__ (Self,InitialState = DefaultBoard):
         #Initiate the board formation; if there is no input then use the default board formation
         Self.State = InitialState
-        Self.BoardArrayA = []#Bitboard for player A
-        Self.BoardArrayB = []#Bitboard for player B
-        Self.SearchTree = []
         Self.Action = ''
+        Self.SearchTree = []
+
 
     def Update(Self,Action):
         #Apply an action (moving one piece) to update the board
@@ -38,91 +37,93 @@ class Board:
         elif Act == 'W':
             Self.State[0][PieceNumber] -= 1
 
-    def GenerateBoard(Self):
-        #This generates a bit board of the current board (an array of 8*8 binary numbers; the bottom row and rightmost column are all 0s to avoid TerminalTest errors)
-        FoundPiece = 0
-        for i in range(1,8):
-            for j in range(1,8):
-                for k in range(12):
-                    if Self.State[1][k] == i:
-                        if Self.State[0][k] == j:
-                            FoundPiece = 1
-                            if k < 6:
-                                Self.BoardArrayB.append(0)
-                                Self.BoardArrayA.append(1)
-                            else:
-                                Self.BoardArrayB.append(1)
-                                Self.BoardArrayA.append(0)
-                if FoundPiece == 0:
-                   Self.BoardArrayB.append(0)
-                   Self.BoardArrayA.append(0)
-                FoundPiece = 0
-            Self.BoardArrayB.append(0)
-            Self.BoardArrayA.append(0)
-        for m in range(8):
-            Self.BoardArrayB.append(0)
-            Self.BoardArrayA.append(0)
+  
 
-    def GenerateGraph(Self):
-        #Print out a user-readable graphical representation of board
-        print('  1 2 3 4 5 6 7')
-        for i in range (7):
-            print(str(i+1), end = '')
-            print(' ', end = '')
-            for j in range (13):
-                if j % 2 > 0:
-                    print(',', end = '')
+        
+def GenerateBoard(State):
+    #This generates a bitboard of the current board (an array of 8*8 binary numbers; the bottom row and rightmost column are all 0s to avoid TerminalTest errors)
+    BoardArrayA = []
+    BoardArrayB = []
+    BoardArrayT = []
+    FoundPiece = 0
+    for i in range(1,8):
+        for j in range(1,8):
+            for k in range(12):
+                if State[1][k] == i:
+                    if State[0][k] == j:
+                        FoundPiece = 1
+                        if k < 6:
+                            BoardArrayB.append(0)
+                            BoardArrayA.append(1)
+                        else:
+                            BoardArrayB.append(1)
+                            BoardArrayA.append(0)
+            if FoundPiece == 0:
+                BoardArrayB.append(0)
+                BoardArrayA.append(0)
+            FoundPiece = 0
+        BoardArrayB.append(0)
+        BoardArrayA.append(0)
+    for m in range(8):
+        BoardArrayB.append(0)
+        BoardArrayA.append(0)
+    BoardArrayT.append(BoardArrayA)
+    BoardArrayT.append(BoardArrayB)
+    return BoardArrayT
+
+def GenerateGraph(BoardArray):
+    #Generate a graphical representation of current board for user
+    #Takes input from GenerateBoard
+    print('  1 2 3 4 5 6 7')
+    for i in range (7):
+        print(str(i+1), end = '')
+        print(' ', end = '')
+        for j in range (13):
+            if j % 2 > 0:
+                print(',', end = '')
+            else:
+                if BoardArray[0][i*8+int(j/2)] == 1:
+                    print('X', end = '')
+                elif BoardArray[1][i*8+int(j/2)] == 1:
+                    print('O', end = '')
                 else:
-                    if Self.BoardArrayA[i*8+int(j/2)] == 1:
-                        print('X', end = '')
-                    elif Self.BoardArrayB[i*8+int(j/2)] == 1:
-                        print('O', end = '')
-                    else:
-                        print(' ', end = '')
-            print('\n')
-
-    def TerminalTest(Self):
-        #Check if the game ended; Also assigns utility: 1 = player A wins, -1 = player B wins
-        StrA = "".join(map(str, Self.BoardArrayA))
-        StrB = "".join(map(str, Self.BoardArrayB))
-        #Make integer number representations of the bitboard for each player
-        BitNumA = int(StrA,base = 2)
-        BitNumB = int(StrB,base = 2)
-        #Horizontal
-        if BitNumA & BitNumA >> 1 & BitNumA >> 2 & BitNumA >> 3:
-            return 1
-        if BitNumB & BitNumB >> 1 & BitNumB >> 2 & BitNumB >> 3:
-            return -1
-        #Vertical
-        if BitNumA & BitNumA >> 8 & BitNumA >> 16 & BitNumA >> 24:
-            return 1
-        if BitNumB & BitNumB >> 8 & BitNumB >> 16 & BitNumB >> 24:
-            return -1
-        #Two kinds of diagnal (right and left, respectively)
-        if BitNumA & BitNumA >> 9 & BitNumA >> 18 & BitNumA >> 27:
-            return 1
-        if BitNumB & BitNumB >> 9 & BitNumB >> 18 & BitNumB >> 27:
-            return -1
-        if BitNumA & BitNumA >> 7 & BitNumA >> 14 & BitNumA >> 21:
-            return 1
-        if BitNumB & BitNumB >> 7 & BitNumB >> 14 & BitNumB >> 21:
-            return -1
-    
+                    print(' ', end = '')
+        print('\n')
 
 
-
-
-    def TreeGeneration(State,depth):
-        #From current board state, generate the game tree to a certain depth
-        #Achieved by recursively calling NodeGeneration until TerminalTest returns true
-
-
-    def GenerateBoardGraph(State):
-        #Print out a graphical representation of current board
+def TerminalTest(BoardArray):
+    #Check if the game ended; Also assigns utility: 1 = player A wins, -1 = player B wins
+    #Takes input from GenerateBoard
+    StrA = "".join(map(str, BoardArray[0]))
+    StrB = "".join(map(str, BoardArray[1]))
+    BitNumA = int(StrA,base = 2)
+    BitNumB = int(StrB,base = 2)
+    #Horizontal
+    if BitNumA & BitNumA >> 1 & BitNumA >> 2 & BitNumA >> 3:
         return 1
+    if BitNumB & BitNumB >> 1 & BitNumB >> 2 & BitNumB >> 3:
+        return -1
+    #Vertical
+    if BitNumA & BitNumA >> 8 & BitNumA >> 16 & BitNumA >> 24:
+        return 1
+    if BitNumB & BitNumB >> 8 & BitNumB >> 16 & BitNumB >> 24:
+        return -1
+    #Two kinds of diagnal (right and left, respectively)
+    if BitNumA & BitNumA >> 9 & BitNumA >> 18 & BitNumA >> 27:
+        return 1
+    if BitNumB & BitNumB >> 9 & BitNumB >> 18 & BitNumB >> 27:
+        return -1
+    if BitNumA & BitNumA >> 7 & BitNumA >> 14 & BitNumA >> 21:
+        return 1
+    if BitNumB & BitNumB >> 7 & BitNumB >> 14 & BitNumB >> 21:
+        return -1
+    #If noone won
+    return 0
 
 def GenerateChild(State):
     #Generate all child nodes of a given node
+    #The check for terminal does not happen within this function, rather before calling this function
+
     #Start by picking a piece in the board
     #Moves: 1 = E, 2 = W, 3 = S, 4 = N
     ChildTemp = copy.deepcopy(State)
@@ -164,7 +165,26 @@ def GenerateChild(State):
         DuplicateCheck.clear()
     for p in range(len(del_list)):
         ChildAll.remove(del_list[p])
+    #Now check if anyone won and update accordingly
+    for q in range(len(ChildAll)):
+        ChildAll[q][3] = TerminalTest(GenerateBoard(ChildAll[q]))
+        print (ChildAll[q][3])
     return ChildAll
+    
+
+
+
+
+    def TreeGeneration(State,depth):
+        #From current board state, generate the game tree to a certain depth
+        #Achieved by recursively calling NodeGeneration until TerminalTest returns true
+
+
+    def GenerateBoardGraph(State):
+        #Print out a graphical representation of current board
+        return 1
+
+
 
 
     #Final operation:
