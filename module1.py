@@ -38,9 +38,9 @@ def GenerateBoard(State):
     BoardArrayA = [0]*64
     BoardArrayB = [0]*64
     for k in range(6):
-        BoardArrayA[State[0][k]+8*State[1][k]] = 1
+        BoardArrayA[State[0][k]-1 + 8* (State[1][k]-1)] = 1
     for k in range(6,12):
-        BoardArrayB[State[0][k]+8*State[1][k]] = 1 
+        BoardArrayB[State[0][k]-1 + 8* (State[1][k]-1)] = 1 
     return BoardArrayA + BoardArrayB
 
 def GenerateGraph(BoardArray):
@@ -98,8 +98,7 @@ def GenerateChild(State):
     #Takes input directly from Board State, as defined at the beginning of this file
 
     #Start by picking a piece in the board
-    ChildTuple = tuple(copy.deepcopy(State))
-    ChildTemp = list(ChildTuple)
+    ChildTemp = copy.deepcopy(State)
     ChildTemp[2] *= -1 #In the child, it's next player's term
     ChildAll = []
     DuplicateCheck = []
@@ -108,35 +107,37 @@ def GenerateChild(State):
         player = range(6)
     else:
         player = range(6,12)
-    for i in player:            
+    for i in player:
         if ChildTemp[0][i] != 1:
             ChildTemp[0][i] -= 1 #Applying 'W'
-            ChildTemp[4] += 1
+            ChildTemp[4] += 1            
             ChildAll.append(ChildTemp)
-            ChildTemp = list(ChildTuple)
+            ChildTemp = copy.deepcopy(State)
             ChildTemp[2] *= -1
         if ChildTemp[0][i] != 7:
             ChildTemp[0][i] += 1 #Applying 'E'
             ChildTemp[4] += 1
             ChildAll.append(ChildTemp)
-            ChildTemp = list(ChildTuple)
+            ChildTemp = copy.deepcopy(State)
             ChildTemp[2] *= -1
         if ChildTemp[1][i] != 1:
             ChildTemp[1][i] -= 1 #Applying 'S'
             ChildTemp[4] += 1
             ChildAll.append(ChildTemp)
-            ChildTemp = list(ChildTuple)
+            ChildTemp = copy.deepcopy(State)
             ChildTemp[2] *= -1
         if ChildTemp[1][i] != 7:
             ChildTemp[1][i] += 1 #Applying 'N'
             ChildTemp[4] += 1
             ChildAll.append(ChildTemp)
-            ChildTemp = list(ChildTuple)
+            ChildTemp = copy.deepcopy(State)
             ChildTemp[2] *= -1
     #Now, check if the move causes 2 pieces to overlap
     for j in range(len(ChildAll)):
         for k in range(12):
-            DuplicateCheck.append([ChildAll[j][0][k],ChildAll[j][1][k]])                
+            DuplicateCheck.append([ChildAll[j][0][k],ChildAll[j][1][k]])
+        #print('List = ',DuplicateCheck)
+        #print('Set = ',set(map(tuple,DuplicateCheck)))
         if len(DuplicateCheck) != len(set(map(tuple,DuplicateCheck))):
             del_list.append(ChildAll[j])
         DuplicateCheck.clear()
@@ -239,10 +240,10 @@ def PerformanceEval():
     #print(TotalStatesExplored)
 
 
-#start_time = time.time()
-currentBoard = [[3,7,6,7,7,4,1,4,5,6,3,5],[3,4,5,5,6,7,3,4,5,6,6,7],-1,0,0]       
-a = Board(currentBoard)
-profile.run('minmax(a.State,1)')
-#print(minmax(a.State,2))
-#print(TotalStatesExplored)              
-#print("--- %s seconds ---" % (time.time() - start_time))
+start_time = time.time()
+cB = [[3,7,6,7,7,4,1,4,5,6,3,5],[3,4,5,5,6,7,3,4,5,6,6,7],-1,0,0]       
+a = Board(cB)
+#profile.run('minmax(a.State,1)')
+print(minmax(a.State,1))
+print(TotalStatesExplored)              
+print("--- %s seconds ---" % (time.time() - start_time))
