@@ -1,6 +1,6 @@
 
 #Here, state will be a an array of 2 lists, First contain x coordinates of pieces, second contain y coordinates.
-#In both arrays, first 6 entries are player A and next 6 are player B. The 3rd, single element of state dictates who is the moving player, 1 for A and -1 for B. 
+#In both arrays, first 6 entries are player A and next 6 are player B. The 3rd, single element of state dictates who is the moving player, 1 for A(X) and -1 for B(O). 
 #The 4th element is utility,1 for player A win and -1 for player B win.0 Indicates non-terminal state
 #The last element is the current depth in the search tree
 import copy
@@ -141,8 +141,6 @@ def GenerateChild(State):
     for j in range(len(ChildAll)):
         for k in range(12):
             DuplicateCheck.append([ChildAll[j][0][k],ChildAll[j][1][k]])
-        #print('List = ',DuplicateCheck)
-        #print('Set = ',set(map(tuple,DuplicateCheck)))
         if len(DuplicateCheck) != len(set(map(tuple,DuplicateCheck))):
             del_list.append(ChildAll[j])
         DuplicateCheck.clear()
@@ -159,7 +157,7 @@ def Max_Utility(State,cutoff):
     if State[3] != 0: #If we already are at a leaf node
         PerformanceEval()
         return State
-    elif State[4] > cutoff: #Or if we passed the depth limit
+    elif State[4] == cutoff: #Or if we passed the depth limit
         State[3] = Heuristics(State)
         PerformanceEval()
         return State
@@ -176,7 +174,7 @@ def Min_Utility(State,cutoff):
     if State[3] != 0: #If we already are at a leaf node
         PerformanceEval()
         return State
-    elif State[4] > cutoff: #Or if we passed the depth limit
+    elif State[4] == cutoff: #Or if we passed the depth limit
         State[3] = Heuristics(State)
         PerformanceEval()
         return State
@@ -245,12 +243,13 @@ def PerformanceEval():
     TotalStatesExplored += 1
     #print(TotalStatesExplored)
 
-start_time = time.time()
+#start_time = time.time()
 cB = [[3,7,6,7,7,4,1,4,5,6,3,5],[2,4,5,5,6,7,3,4,5,6,6,7],-1,0,0]  
 a = Board(cB)
-print(minmax(a.State,2))
-print(TotalStatesExplored)              
-print("--- %s seconds ---" % (time.time() - start_time))
+
+#print(minmax(a.State,2))
+#print(TotalStatesExplored)              
+#print("--- %s seconds ---" % (time.time() - start_time))
 
 
 

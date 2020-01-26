@@ -240,10 +240,11 @@ def PerformanceEval():
     #print(TotalStatesExplored)
 
 
-start_time = time.time()
+#start_time = time.time()
 cB = [[3,7,6,7,7,4,1,4,5,6,3,5],[3,4,5,5,6,7,3,4,5,6,6,7],-1,0,0]       
 a = Board(cB)
+print(GenerateBoard(a.State))
 #profile.run('minmax(a.State,1)')
-print(minmax(a.State,1))
-print(TotalStatesExplored)              
-print("--- %s seconds ---" % (time.time() - start_time))
+#print(minmax(a.State,1))
+#print(TotalStatesExplored)              
+#print("--- %s seconds ---" % (time.time() - start_time))
