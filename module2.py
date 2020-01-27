@@ -43,7 +43,6 @@ def Update(State,Action,Mode):
         return State
     else:
         #Create a Child
-        #ChildNode = copy.deepcopy(State)
         ChildNode = [[0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0],0,0,0]
         for i in range(12):
             ChildNode[0][i] = State[0][i]
@@ -157,7 +156,7 @@ def GenerateAction(State,BoardArray):
                
         
       
-def Max_Utility(State,cutoff): #Return Utility for player Max (i.e. player A)
+def Max_Utility(State,cutoff): #Return Utility for player Max (i.e. player A) for MinMax
     global TotalStatesExplored 
     if State[4] == cutoff:
         State[3] = Heuristics(State)
@@ -174,7 +173,7 @@ def Max_Utility(State,cutoff): #Return Utility for player Max (i.e. player A)
     PerformanceEval()
     return utility
     
-def Min_Utility(State,cutoff): #Return Utility for player Min (i.e. player B)
+def Min_Utility(State,cutoff): #Return Utility for player Min (i.e. player B) for MinMax
     global TotalStatesExplored
     if State[4] == cutoff:
         State[3] = Heuristics(State)
@@ -197,8 +196,6 @@ def minmax(State,cutoff):
     Actions =[]
     Max,Min = 0,1000
     MaxIndex, MinIndex = 0,0
-    Child = []
-    #First, find the board after the next best move
     Actions = GenerateAction(State,GenerateBoard(State))
     if State[2] == 1: #Player A, so maximize utility
         for i in range(len(Actions)):
@@ -212,7 +209,67 @@ def minmax(State,cutoff):
                 Min = Max_Utility(Update(State,Actions[j],2),cutoff)
                 MinIndex = j
         return Actions[MinIndex]
-    
+
+def AB_Max_Utility(State,cutoff,alpha,beta): #Return Utility for player Max (i.e. player A) for Alpha-Beta
+    global TotalStatesExplored
+    if State[4] == cutoff:
+        State[3] = Heuristics(State)
+        PerformanceEval()
+        return State[3]
+    array = GenerateBoard(State)
+    if TerminalTest(array) != 0:
+        State[3] = TerminalTest(GenerateBoard(State))
+        PerformanceEval()
+        return State[3]
+    utility = -100
+    for i in GenerateAction(State,array):
+        utility = max(utility, AB_Min_Utility(Update(State,i,2),cutoff,alpha,beta))
+        if utility >= beta:
+            PerformanceEval()
+            return utility
+        alpha = max(alpha,utility)
+    PerformanceEval()
+    return utility
+
+def AB_Min_Utility(State,cutoff,alpha,beta): #Return Utility for player Min (i.e. player B) for Alpha-Beta
+    global TotalStatesExplored
+    if State[4] == cutoff:
+        State[3] = Heuristics(State)
+        PerformanceEval()
+        return State[3]
+    array = GenerateBoard(State)
+    if TerminalTest(array) != 0:
+        State[3] = TerminalTest(GenerateBoard(State))
+        PerformanceEval()
+        return State[3]
+    utility = 100
+    for i in GenerateAction(State,array):
+        utility = min(utility, AB_Max_Utility(Update(State,i,2),cutoff,alpha,beta))
+        if utility <= alpha:
+            PerformanceEval()
+            return utility
+        beta = min(beta,utility)
+    PerformanceEval()
+    return utility
+
+def alphabeta(State,cutoff,alpha,beta):
+     Action = []
+     Max,Min = 0,1000
+     MaxIndex, MinIndex = 0,0
+     Actions = GenerateAction(State,GenerateBoard(State))
+     if State[2] == 1: #Player A, so maximize utility
+        for i in range(len(Actions)):
+            if Max < AB_Min_Utility(Update(State,Actions[i],2),cutoff,alpha,beta):
+                Max = AB_Min_Utility(Update(State,Actions[i],2),cutoff,alpha,beta)
+                MaxIndex = i
+        return Actions[MaxIndex]
+     if State[2] == -1: #Player B, so minimize utility
+        for j in range(len(Actions)):
+            if Min > AB_Max_Utility(Update(State,Actions[j],2),cutoff,alpha,beta):
+                Min = AB_Max_Utility(Update(State,Actions[j],2),cutoff,alpha,beta)
+                MinIndex = j
+        return Actions[MinIndex]
+
 def Heuristics(State):
     #Gives the heuristic evaluation of current state
     return 1
@@ -228,6 +285,7 @@ cB = [[3,7,6,7,7,4,1,4,5,6,3,5],[3,4,5,5,6,7,3,4,5,6,6,7],-1,0,0]
 a = Board()
 #profile.run('minmax(a.State,3)')   
 start_time = time.time()
-print(minmax(a.State,6))           
+#print(minmax(a.State,3))
+#print(alphabeta(a.State,8,-100,100))           
 print("--- %s seconds ---" % (time.time() - start_time))
 print(TotalStatesExplored)
