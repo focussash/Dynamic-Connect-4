@@ -43,7 +43,13 @@ def Update(State,Action,Mode):
         return State
     else:
         #Create a Child
-        ChildNode = copy.deepcopy(State)
+        #ChildNode = copy.deepcopy(State)
+        ChildNode = [[0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0],0,0,0]
+        for i in range(12):
+            ChildNode[0][i] = State[0][i]
+            ChildNode[1][i] = State[1][i]
+        for j in range(2,5):
+            ChildNode[j] = State[j]
         #Then, do the update on the child node
         for x in range(12):
             if ChildNode[0][x] == X and ChildNode[1][x] == Y:
@@ -151,7 +157,7 @@ def GenerateAction(State,BoardArray):
                
         
       
-def Max_Utility(State,cutoff):
+def Max_Utility(State,cutoff): #Return Utility for player Max (i.e. player A)
     global TotalStatesExplored 
     if State[4] == cutoff:
         State[3] = Heuristics(State)
@@ -168,7 +174,7 @@ def Max_Utility(State,cutoff):
     PerformanceEval()
     return utility
     
-def Min_Utility(State,cutoff):
+def Min_Utility(State,cutoff): #Return Utility for player Min (i.e. player B)
     global TotalStatesExplored
     if State[4] == cutoff:
         State[3] = Heuristics(State)
@@ -218,10 +224,10 @@ def PerformanceEval():
 
 #profile.run('minmax(a.State,1)')
 
-#start_time = time.time()
 cB = [[3,7,6,7,7,4,1,4,5,6,3,5],[3,4,5,5,6,7,3,4,5,6,6,7],-1,0,0]       
-a = Board(cB)
-profile.run('minmax(a.State,3)')
-#print(minmax(a.State,6))
-print(TotalStatesExplored)              
-#print("--- %s seconds ---" % (time.time() - start_time))
+a = Board()
+#profile.run('minmax(a.State,3)')   
+start_time = time.time()
+print(minmax(a.State,6))           
+print("--- %s seconds ---" % (time.time() - start_time))
+print(TotalStatesExplored)
