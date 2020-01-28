@@ -1,4 +1,7 @@
-import socket
+#Here, state will be a an array of 2 lists, First contain x coordinates of pieces, second contain y coordinates.
+#In both arrays, first 6 entries are player A and next 6 are player B. The 3rd, single element of state dictates who is the moving player, 1 for A(X) and -1 for B(O). 
+#The 4th element is utility,1 for player A win and -1 for player B win.0 Indicates non-terminal state
+#The last element is the current depth in the search tree
 import copy
 import time
 import profile
@@ -138,15 +141,15 @@ def GenerateAction(State,BoardArray):
     else:
         player = range(6,12)
     #For each piece, check 1)whether it's at a border 2) whether it has a neighbouring piece
-    for i in player:
-        if State[0][i]-1 and not(BoardArray[State[0][i]-2 + 8* (State[1][i]-1)] or BoardArray[State[0][i]-2 + 8* (State[1][i]-1)+64]): 
-            temp = [State[0][i],State[1][i],'W']
-            Action.append(''.join(map(str,(temp))))
+    for i in player:       
         if State[0][i]-7 and not(BoardArray[State[0][i] + 8* (State[1][i]-1)] or BoardArray[State[0][i] + 8* (State[1][i]-1)+64]): 
             temp = [State[0][i],State[1][i],'E']
             Action.append(''.join(map(str,(temp))))
         if State[1][i]-1 and not(BoardArray[State[0][i]-1 + 8* (State[1][i]-2)] or BoardArray[State[0][i]-1 + 8* (State[1][i]-2)+64]): 
             temp = [State[0][i],State[1][i],'N']
+            Action.append(''.join(map(str,(temp))))
+        if State[0][i]-1 and not(BoardArray[State[0][i]-2 + 8* (State[1][i]-1)] or BoardArray[State[0][i]-2 + 8* (State[1][i]-1)+64]): 
+            temp = [State[0][i],State[1][i],'W']
             Action.append(''.join(map(str,(temp))))
         if State[1][i]-7 and not(BoardArray[State[0][i]-1 + 8* (State[1][i])] or BoardArray[State[0][i]-1 + 8* (State[1][i])+64]): 
             temp = [State[0][i],State[1][i],'S']
@@ -283,20 +286,13 @@ def alphabeta(State,cutoff,alpha,beta):#Effectively the same as minmax, except t
         return Actions[MinIndex]
 
 def Heuristics(State,array):
-    #Gives the heuristic evaluation of current state
-    #It's worth explaining a bit the "scoring" system I used here: for a known win/lose situation, utility is 100 for black win and -100 for white win.
-    #For any cases in between, favorable situations for black result in + points, whereas favorable for white result in - points. The final point is then evaluated
+    #This is a trivial version of Heuristics,for evaluation of heuristic performance
+    score = 0
     StrA = "".join(map(str, array[0:63]))
     StrB = "".join(map(str, array[64:128]))
     BitNumA = int(StrA,base = 2)
     BitNumB = int(StrB,base = 2)
     BitTotal = BitNumA | BitNumB
-    distance = 0
-    score = 0 
-    #It's ok to have a score of 0, even though you might think this leads to the system consider game unfinished, because only when TerminalTest checked the game was finished will the program assign heuristic points
-    #We check for consecutive pieces already, with empty spaces following (so there is enough room for potential connection of 4). 
-    #Note here we only count1 set of connected pieces. More sets cause the agent to favor a cross-shaped configuration
-    #2 pieces:
     if BitNumA & BitNumA >> 1: #Horizontal
         score += 15       
     elif BitNumA & BitNumA >> 8: #Vertical
@@ -330,19 +326,6 @@ def Heuristics(State,array):
         score -= 40
     elif BitNumB & BitNumB >> 7 & BitNumB >> 14:
         score -= 40
-    #Another heuristic we can include is to calculate the total distance between pieces for a given player
-    if State[2] == 1:
-        for i in range(6):
-            for j in range(6):
-                distance += abs(State[0][i]-State[0][j]) 
-                distance += abs(State[1][j]-State[1][j]) 
-    else:
-        for i in range(6):
-            for j in range(6):
-                distance -= abs(State[0][i]-State[0][j]) 
-                distance -= abs(State[1][j]-State[1][j])
-    distance = distance //7 #Obviously, we don't want too much weight on this
-    score -= distance #The more distance, the worse
     return score
 
 def PerformanceEval():
@@ -350,10 +333,11 @@ def PerformanceEval():
     TotalStatesExplored += 1
     #print(TotalStatesExplored)
 
-def PlayGame(Board): #Create a interactive game UI
+def PlayGame(Board): #Create an interactive game UI
     array = GenerateBoard(Board.State)
     player = int(input('Please indicate whether you play X(type 1) or O(type 2).\n'))
     Finished = 0
+    explored = []
     while Finished == 0:
         GenerateGraph(array)
         if (player == 2 and Board.State[2] == -1) or (player == 1 and Board.State[2] == 1):
@@ -361,6 +345,7 @@ def PlayGame(Board): #Create a interactive game UI
             Action = input('Type in your move: \n')
             Board.State = Update(Board.State,Action,1) 
         else:
+            #Here we choose the agent type: minmax or alpha-beta
             Action = alphabeta(a.State,5,-1000,1000)
             #Action = minmax(a.State,4)
             print('My move is ',Action,'\n')
@@ -375,60 +360,21 @@ def PlayGame(Board): #Create a interactive game UI
             else:
                 print('Player O (white) won! \n')
             break
-def client(Board):
-    player = 0
-    Finished = 0
-    #The following 4 parameters will be subject to the actual game
-    host = ''
-    port = 0
-    gameID = 0
-    color = 'black'
-
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM) #Creating a socket object. This piece of code is copied from online tutorial
-    sock.connect(host,port)
-    sock.sendall(str(gameID)+ ' '+ color)
-    if color == 'black':
-        player = 1
-    else:
-        player = -1
-    while Finished == 0:
-        GenerateGraph(array)
-        if (player == 2 and Board.State[2] == -1) or (player == 1 and Board.State[2] == 1):
-            print('Your turn.')
-            Action = sock.recv(128)
-            Board.State = Update(Board.State,Action,1) 
-        else:
-            Action = alphabeta(a.State,5,-1000,1000)
-            #Action = minmax(a.State,4)
-            sock.sendall(Action + '\n')
-            Board.State = Update(Board.State,Action,1)        
-        array = GenerateBoard(Board.State)
-        Finished = TerminalTest(array)
-        if Finished != 0:
-            print('Game has finished!\n')
-            GenerateGraph(array)
-            if Finished > 0:
-                print('Player X (black) won! \n')
-            else:
-                print('Player O (white) won! \n')
-            sock.close()
-            break
 
 
-#Here, state will be a an array of 2 lists, First contain x coordinates of pieces, second contain y coordinates.
-#In both arrays, first 6 entries are player A and next 6 are player B. The 3rd, single element of state dictates who is the moving player, 1 for A(X) and -1 for B(O). 
-#The 4th element is utility,1 for player A win and -1 for player B win. 0 Indicates non-terminal state
-#The last element is the current depth in the search tree
 
-#Sample State: State = [[1,1,1,7,7,7,1,1,1,7,7,7],[2,4,6,1,3,5,3,5,7,2,4,6],-1,0,0]
-#This gives the initial board as defined in the assignment, with white playing first
+#profile.run('minmax(a.State,1)')
 
-#If trying to play by initial board, you dont need to give State argument
+cB1 = [[3,7,6,7,7,4,1,4,5,6,3,5],[3,4,5,5,6,7,3,4,5,6,6,7],-1,0,0]
+cB2 = [[1,3,3,2,6,7,1,2,4,5,6,1],[2,3,4,6,5,4,1,1,4,5,3,7],-1,0,0]
+cB3 = [[3,3,3,5,5,5,3,3,3,5,5,5],[3,4,7,1,2,6,1,2,6,3,5,7],-1,0,0]
+cBtest = [[3,7,6,7,7,4,7,1,7,6,3,5],[3,4,3,5,6,7,2,4,7,6,6,7],1,0,0]
+a = Board(cB3)
+#PlayGame(a)
 
-board = Board()#Input state as argument if want to try different state
-PlayGame(board) #Run this if want to interactively play with agent
-#client(Board)   #Runthis if want to play via server
+#profile.run('minmax(a.State,4)')   
+start_time = time.time()
+print(alphabeta(a.State,7,-1000,1000))           
+print("--- %s seconds ---" % (time.time() - start_time))
+print(TotalStatesExplored)
 
-#print(alphabeta(a.State,3,-1000,1000))       #Run this if want to give a result of alphabeta pruning with state and depth cutoff    
-#print(minmax(a.State,3)                      #Run this if want to give a result of minmax with state and depth cutoff 
-#print(TotalStatesExplored)                   #Run this along with either of the previous 2 commands to print the amount of states explored

@@ -1,8 +1,12 @@
-import socket
+#Here, state will be a an array of 2 lists, First contain x coordinates of pieces, second contain y coordinates.
+#In both arrays, first 6 entries are player A and next 6 are player B. The 3rd, single element of state dictates who is the moving player, 1 for A(X) and -1 for B(O). 
+#The 4th element is utility,1 for player A win and -1 for player B win.0 Indicates non-terminal state
+#The last element is the current depth in the search tree
 import copy
 import time
 import profile
 from random import randint
+from functools import partial
 DefaultBoard = [[1,1,1,7,7,7,1,1,1,7,7,7],[2,4,6,1,3,5,3,5,7,2,4,6],-1,0,0]
 TotalStatesExplored = 0 #This is used to check the total amount of states explored
 UpdateCounter = 0 #This is used to check whether or not our agent find all actions to have equal utility value, therefore effectively not doing anything
@@ -138,7 +142,7 @@ def GenerateAction(State,BoardArray):
     else:
         player = range(6,12)
     #For each piece, check 1)whether it's at a border 2) whether it has a neighbouring piece
-    for i in player:
+    for i in player:       
         if State[0][i]-1 and not(BoardArray[State[0][i]-2 + 8* (State[1][i]-1)] or BoardArray[State[0][i]-2 + 8* (State[1][i]-1)+64]): 
             temp = [State[0][i],State[1][i],'W']
             Action.append(''.join(map(str,(temp))))
@@ -217,17 +221,28 @@ def minmax(State,cutoff):
 
 def AB_Max_Utility(State,cutoff,alpha,beta): #Return Utility for player Max (i.e. player A) for Alpha-Beta
     global TotalStatesExplored
-    array = GenerateBoard(State)
+    Actions = []
+    ActionsX=[]
+    Array = GenerateBoard(State)
     if State[4] >= cutoff:
-        State[3] = Heuristics(State,array)
+        State[3] = Heuristics(State,Array)
         PerformanceEval()
         return State[3]
-    if TerminalTest(array) != 0:
-        State[3] = TerminalTest(array)
+    if TerminalTest(Array) != 0:
+        State[3] = TerminalTest(Array)
         PerformanceEval()
         return State[3]
     utility = -1000
-    for i in GenerateAction(State,array):
+    ChildNode = [[0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0],0,0,0]
+    for i in range(12):
+        ChildNode[0][i] = State[0][i]
+        ChildNode[1][i] = State[1][i]
+    for j in range(2,5):
+        ChildNode[j] = State[j]
+    Actions = GenerateAction(ChildNode,Array)
+    ActionsX = sorted(Actions, key = partial(Heuristics,array = Array))
+    print(ActionsX)
+    for i in Actions:
         utility = max(utility, AB_Min_Utility(Update(State,i,2),cutoff,alpha,beta))
         if utility >= beta:
             PerformanceEval()
@@ -238,17 +253,17 @@ def AB_Max_Utility(State,cutoff,alpha,beta): #Return Utility for player Max (i.e
 
 def AB_Min_Utility(State,cutoff,alpha,beta): #Return Utility for player Min (i.e. player B) for Alpha-Beta
     global TotalStatesExplored
-    array = GenerateBoard(State)
+    Array = GenerateBoard(State)
     if State[4] >= cutoff:
-        State[3] = Heuristics(State,array)
+        State[3] = Heuristics(State,Array)
         PerformanceEval()
         return State[3]
-    if TerminalTest(array) != 0:
-        State[3] = TerminalTest(array)
+    if TerminalTest(Array) != 0:
+        State[3] = TerminalTest(Array)
         PerformanceEval()
         return State[3]
     utility = 1000
-    for i in GenerateAction(State,array):
+    for i in GenerateAction(State,Array):
         utility = min(utility, AB_Max_Utility(Update(State,i,2),cutoff,alpha,beta))
         if utility <= alpha:
             PerformanceEval()
@@ -354,6 +369,7 @@ def PlayGame(Board): #Create a interactive game UI
     array = GenerateBoard(Board.State)
     player = int(input('Please indicate whether you play X(type 1) or O(type 2).\n'))
     Finished = 0
+    explored = []
     while Finished == 0:
         GenerateGraph(array)
         if (player == 2 and Board.State[2] == -1) or (player == 1 and Board.State[2] == 1):
@@ -375,60 +391,20 @@ def PlayGame(Board): #Create a interactive game UI
             else:
                 print('Player O (white) won! \n')
             break
-def client(Board):
-    player = 0
-    Finished = 0
-    #The following 4 parameters will be subject to the actual game
-    host = ''
-    port = 0
-    gameID = 0
-    color = 'black'
-
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM) #Creating a socket object. This piece of code is copied from online tutorial
-    sock.connect(host,port)
-    sock.sendall(str(gameID)+ ' '+ color)
-    if color == 'black':
-        player = 1
-    else:
-        player = -1
-    while Finished == 0:
-        GenerateGraph(array)
-        if (player == 2 and Board.State[2] == -1) or (player == 1 and Board.State[2] == 1):
-            print('Your turn.')
-            Action = sock.recv(128)
-            Board.State = Update(Board.State,Action,1) 
-        else:
-            Action = alphabeta(a.State,5,-1000,1000)
-            #Action = minmax(a.State,4)
-            sock.sendall(Action + '\n')
-            Board.State = Update(Board.State,Action,1)        
-        array = GenerateBoard(Board.State)
-        Finished = TerminalTest(array)
-        if Finished != 0:
-            print('Game has finished!\n')
-            GenerateGraph(array)
-            if Finished > 0:
-                print('Player X (black) won! \n')
-            else:
-                print('Player O (white) won! \n')
-            sock.close()
-            break
 
 
-#Here, state will be a an array of 2 lists, First contain x coordinates of pieces, second contain y coordinates.
-#In both arrays, first 6 entries are player A and next 6 are player B. The 3rd, single element of state dictates who is the moving player, 1 for A(X) and -1 for B(O). 
-#The 4th element is utility,1 for player A win and -1 for player B win. 0 Indicates non-terminal state
-#The last element is the current depth in the search tree
 
-#Sample State: State = [[1,1,1,7,7,7,1,1,1,7,7,7],[2,4,6,1,3,5,3,5,7,2,4,6],-1,0,0]
-#This gives the initial board as defined in the assignment, with white playing first
+#profile.run('minmax(a.State,1)')
 
-#If trying to play by initial board, you dont need to give State argument
+cB1 = [[3,7,6,7,7,4,1,4,5,6,3,5],[3,4,5,5,6,7,3,4,5,6,6,7],-1,0,0]
+cB2 = [[1,3,3,2,6,7,1,2,4,5,6,1],[2,3,4,6,5,4,1,1,4,5,3,7],-1,0,0]
+cB3 = [[3,3,3,5,5,5,3,3,3,5,5,5],[3,4,7,1,2,6,1,2,6,3,5,7],-1,0,0]
+cBtest = [[3,7,6,7,7,4,7,1,7,6,3,5],[3,4,3,5,6,7,2,4,7,6,6,7],1,0,0]
+a = Board(cB3)
+#PlayGame(a)
 
-board = Board()#Input state as argument if want to try different state
-PlayGame(board) #Run this if want to interactively play with agent
-#client(Board)   #Runthis if want to play via server
-
-#print(alphabeta(a.State,3,-1000,1000))       #Run this if want to give a result of alphabeta pruning with state and depth cutoff    
-#print(minmax(a.State,3)                      #Run this if want to give a result of minmax with state and depth cutoff 
-#print(TotalStatesExplored)                   #Run this along with either of the previous 2 commands to print the amount of states explored
+#profile.run('minmax(a.State,4)')   
+start_time = time.time()
+print(alphabeta(a.State,4,-1000,1000))           
+print("--- %s seconds ---" % (time.time() - start_time))
+print(TotalStatesExplored)
