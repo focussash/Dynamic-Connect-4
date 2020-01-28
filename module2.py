@@ -5,8 +5,10 @@
 import copy
 import time
 import profile
+from random import randint
 DefaultBoard = [[1,1,1,7,7,7,1,1,1,7,7,7],[2,4,6,1,3,5,3,5,7,2,4,6],1,0,0]
-TotalStatesExplored = 0
+TotalStatesExplored = 0 #This is used to check the total amount of states explored
+UpdateCounter = 0 #This is used to check whether or not our agent find all actions to have equal utility value, therefore effectively not doing anything
 class Board:
     global DefaultBoard
 
@@ -193,20 +195,27 @@ def minmax(State,cutoff):
     #This function applys minmax algorithm to find the next best move, given a step cutoff
     #It returns an action to be taken
     Actions =[]
+    MaxArray,MinArray = [],[]
     Max,Min = -1000,1000
     MaxIndex, MinIndex = 0,0
-    Actions = GenerateAction(State,GenerateBoard(State))
+    Actions = GenerateAction(State,GenerateBoard(State))   
     if State[2] == 1: #Player A, so maximize utility
         for i in range(len(Actions)):
-            if Max < Min_Utility(Update(State,Actions[i],2),cutoff):
-                Max = Min_Utility(Update(State,Actions[i],2),cutoff)
+            MaxArray.append(Min_Utility(Update(State,Actions[i],2),cutoff))
+            if Max < MaxArray[i]:
+                Max = MaxArray[i]
                 MaxIndex = i
+        if len(set(MaxArray)) < 2: #If we have same utility for all actions, generate a random action
+            MaxIndex = randint(0,i)
         return Actions[MaxIndex]
     if State[2] == -1: #Player B, so minimize utility
         for j in range(len(Actions)):
-            if Min > Max_Utility(Update(State,Actions[j],2),cutoff):
-                Min = Max_Utility(Update(State,Actions[j],2),cutoff)
+            MinArray.append(Max_Utility(Update(State,Actions[j],2),cutoff))
+            if Min > MinArray[j]:
+                Min = MinArray[j]
                 MinIndex = j
+        if len(set(MinArray)) < 2: #If we have same utility for all actions, generate a random action
+            MinIndex = randint(0,j)
         return Actions[MinIndex]
 
 def AB_Max_Utility(State,cutoff,alpha,beta): #Return Utility for player Max (i.e. player A) for Alpha-Beta
@@ -253,26 +262,34 @@ def AB_Min_Utility(State,cutoff,alpha,beta): #Return Utility for player Min (i.e
 
 def alphabeta(State,cutoff,alpha,beta):#Effectively the same as minmax, except that it uses alpha-beta Max and Min
      Action = []
+     MaxArray,MinArray = [],[]
      Max,Min = -1000,1000
      MaxIndex, MinIndex = 0,0
      Actions = GenerateAction(State,GenerateBoard(State))
      if State[2] == 1: #Player A, so maximize utility
         for i in range(len(Actions)):
-            if Max < AB_Min_Utility(Update(State,Actions[i],2),cutoff,alpha,beta):
-                Max = AB_Min_Utility(Update(State,Actions[i],2),cutoff,alpha,beta)
+            MaxArray.append(AB_Min_Utility(Update(State,Actions[i],2),cutoff,alpha,beta))
+            if Max < MaxArray[i]:
+                Max = MaxArray[i]
                 MaxIndex = i
+        if len(set(MaxArray)) < 2: #If we have same utility for all actions, generate a random action
+            MaxIndex = randint(0,i)
         return Actions[MaxIndex]
      if State[2] == -1: #Player B, so minimize utility
         for j in range(len(Actions)):
-            if Min > AB_Max_Utility(Update(State,Actions[j],2),cutoff,alpha,beta):
-                Min = AB_Max_Utility(Update(State,Actions[j],2),cutoff,alpha,beta)
+            MinArray.append(AB_Max_Utility(Update(State,Actions[j],2),cutoff,alpha,beta))
+            if Min > MinArray[j]:
+                Min = MinArray[j]
                 MinIndex = j
+        if len(set(MinArray)) < 2: #If we have same utility for all actions, generate a random action
+            MinIndex = randint(0,j)
         return Actions[MinIndex]
 
 def Heuristics(State,array):
     #Gives the heuristic evaluation of current state
     #It's worth explaining a bit the "scoring" system I used here: for a known win/lose situation, utility is 100 for black win and -100 for white win.
     #For any cases in between, favorable situations for black result in + points, whereas favorable for white result in - points. The final point is then evaluated
+
     StrA = "".join(map(str, array[0:63]))
     StrB = "".join(map(str, array[64:128]))
     BitNumA = int(StrA,base = 2)
@@ -283,38 +300,38 @@ def Heuristics(State,array):
     #We check for consecutive pieces already, with empty spaces following (so there is enough room for potential connection of 4). 
     #Note here we only count1 set of connected pieces. More sets cause the agent to favor a cross-shaped configuration
     #2 pieces:
-    if BitNumA & BitNumA >> 1 & ~(BitTotal >> 2) & ~(BitTotal >> 3): #Horizontal
+    if BitNumA & BitNumA >> 1: #Horizontal
+        score += 5        
+    elif BitNumA & BitNumA >> 8: #Vertical
         score += 5
-    elif BitNumA & BitNumA >> 8 & ~(BitTotal >> 16) & ~(BitTotal >> 24): #Vertical
+    elif BitNumA & BitNumA >> 9: #Diagonal
         score += 5
-    elif BitNumA & BitNumA >> 9 & ~(BitTotal >> 18) & ~(BitTotal >> 27): #Diagonal
+    elif BitNumA & BitNumA >> 7: #Also diagonal
         score += 5
-    elif BitNumA & BitNumA >> 7 & ~(BitTotal >> 14) & ~(BitTotal >> 21): #Also diagonal
-        score += 5
-    if BitNumB & BitNumB >> 1 & ~(BitTotal >> 2) & ~(BitTotal >> 3):
+    if BitNumB & BitNumB >> 1:
+        score -= 5        
+    elif BitNumB & BitNumB >> 8:
         score -= 5
-    elif BitNumB & BitNumB >> 8 & ~(BitTotal >> 16) & ~(BitTotal >> 24):
+    elif BitNumB & BitNumB >> 9:
         score -= 5
-    elif BitNumB & BitNumB >> 9 & ~(BitTotal >> 18) & ~(BitTotal >> 27):
-        score -= 5
-    elif BitNumB & BitNumB >> 7 & ~(BitTotal >> 14) & ~(BitTotal >> 21):
+    elif BitNumB & BitNumB >> 7:
         score -= 5
     #3 pieces:
-    if BitNumA & BitNumA >> 1 & BitNumA >> 2 & ~(BitTotal >> 3): 
+    if BitNumA & BitNumA >> 1 & BitNumA >> 2: 
         score += 10
-    elif BitNumA & BitNumA >> 8 & BitNumA >> 16 & ~(BitTotal >> 24): 
+    elif BitNumA & BitNumA >> 8 & BitNumA >> 16: 
         score += 10
-    elif BitNumA & BitNumA >> 9 & BitNumA >> 18 & ~(BitTotal >> 27): #3 pieces
+    elif BitNumA & BitNumA >> 9 & BitNumA >> 18: 
         score += 10
-    elif BitNumA & BitNumA >> 7 & BitNumA >> 14 & ~(BitTotal >> 21): 
+    elif BitNumA & BitNumA >> 7 & BitNumA >> 14: 
         score += 10
-    if BitNumB & BitNumB >> 1 & BitNumB >> 2 & ~(BitTotal >> 3):
+    if BitNumB & BitNumB >> 1 & BitNumB >> 2:
         score -= 10             
-    elif BitNumB & BitNumB >> 8 & BitNumB >> 16 & ~(BitTotal >> 24):
-        score -= 10   
-    elif BitNumB & BitNumB >> 9 & BitNumB >> 18 & ~(BitTotal >> 27):
+    elif BitNumB & BitNumB >> 8 & BitNumB >> 16:
         score -= 10
-    elif BitNumB & BitNumB >> 7 & BitNumB >> 14 & ~(BitTotal >> 21):
+    elif BitNumB & BitNumB >> 9 & BitNumB >> 18:
+        score -= 10
+    elif BitNumB & BitNumB >> 7 & BitNumB >> 14:
         score -= 10
     return score
 
@@ -327,18 +344,18 @@ def PlayGame(Board): #Create a interactive game UI
     array = GenerateBoard(Board.State)
     player = int(input('Please indicate whether you play X(type 1) or O(type 2).\n'))
     Finished = 0
+    explored = []
     while Finished == 0:
         GenerateGraph(array)
         if (player == 2 and Board.State[2] == -1) or (player == 1 and Board.State[2] == 1):
             print('Your turn.')
             Action = input('Type in your move: \n')
             Board.State = Update(Board.State,Action,1) 
-            print(Board.State[2])
         else:
             Action = alphabeta(a.State,6,-1000,1000)
-            #Action = minmax(a.State,5)
+            #Action = minmax(a.State,4)
             print('My move is ',Action,'\n')
-            Board.State = Update(Board.State,Action,1)
+            Board.State = Update(Board.State,Action,1)        
         array = GenerateBoard(Board.State)
         Finished = TerminalTest(array)
         if Finished != 0:
@@ -356,11 +373,13 @@ def PlayGame(Board): #Create a interactive game UI
 
 cB1 = [[3,7,6,7,7,4,1,4,5,6,3,5],[3,4,5,5,6,7,3,4,5,6,6,7],-1,0,0]
 cB2 = [[1,3,3,2,6,7,1,2,4,5,6,1],[2,3,4,6,5,4,1,1,4,5,3,7],-1,0,0]
-a = Board(cB1)
+cB3 = [[3,3,3,5,5,5,3,3,3,5,5,5],[3,4,7,1,2,6,1,2,6,3,5,7],-1,0,0]
+cBtest = [[3,7,6,7,7,4,7,1,7,6,3,5],[3,4,3,5,6,7,2,4,7,6,6,7],1,0,0]
+a = Board(cB3)
 PlayGame(a)
-#profile.run('alphabeta(a.State,5,101,-101)')   
+
+#profile.run('minmax(a.State,4)')   
 #start_time = time.time()
-#print(minmax(a.State,6))
-#print(alphabeta(a.State,7,-100,100))           
+#print(minmax(a.State,4))           
 #print("--- %s seconds ---" % (time.time() - start_time))
 #print(TotalStatesExplored)
